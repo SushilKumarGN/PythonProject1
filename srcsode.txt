@@ -1,0 +1,117 @@
+import json
+import tkinter as tk
+from tkinter import messagebox, simpledialog
+
+class ExpenseTracker:
+    def __init__(self, root):
+        self.expenses = []
+        self.budget = 0
+        self.root = root
+        self.root.title("Personal Expense Tracker")
+        self.root.geometry("400x600")
+        self.root.configure(bg="#f0f0f0")
+        self.create_ui()
+        self.load_data()
+    
+    def create_ui(self):
+        frame = tk.Frame(self.root, bg="#f0f0f0")
+        frame.pack(pady=10, padx=10, fill=tk.BOTH, expand=True)
+
+        self.budget_label = tk.Label(frame, text=f"Monthly Budget: ${self.budget}", font=("Arial", 12, "bold"), bg="#f0f0f0", fg="#333")
+        self.budget_label.grid(row=0, column=0, columnspan=2, pady=5)
+
+        self.spent_label = tk.Label(frame, text=f"Total Spent: ${self.get_total_spent()}", font=("Arial", 12, "bold"), bg="#f0f0f0", fg="#333")
+        self.spent_label.grid(row=1, column=0, columnspan=2, pady=5)
+        
+        self.remaining_label = tk.Label(frame, text=f"Leftover: ${self.budget - self.get_total_spent()}", font=("Arial", 12, "bold"), bg="#f0f0f0", fg="#333")
+        self.remaining_label.grid(row=2, column=0, columnspan=2, pady=5)
+
+        self.category_label = tk.Label(frame, text="Expenses by Category:", font=("Arial", 10, "bold"), bg="#f0f0f0", fg="#333")
+        self.category_label.grid(row=3, column=0, columnspan=2, pady=5)
+
+        self.category_display = tk.Label(frame, text=self.get_expenses_by_category(), font=("Arial", 10), bg="#f0f0f0", fg="#555")
+        self.category_display.grid(row=4, column=0, columnspan=2, pady=5)
+        
+        buttons = [
+            ("Set Budget", self.set_budget, "#4CAF50"),
+            ("Add Expense", self.add_expense, "#2196F3"),
+            ("View Expenses", self.view_expenses, "#FF9800"),
+            ("Delete Expense", self.delete_expense, "#E91E63"),
+            ("Save Data", self.save_data, "#9C27B0"),
+            ("Load Data", self.load_data, "#3F51B5"),
+            ("Exit", self.root.quit, "#F44336")
+        ]
+
+        for i, (text, command, color) in enumerate(buttons):
+            tk.Button(frame, text=text, command=command, bg=color, fg="white", font=("Arial", 10, "bold"), width=20, height=2).grid(row=i+5, column=0, pady=5, padx=5, sticky="ew")
+    
+    def get_total_spent(self):
+        return sum(exp['amount'] for exp in self.expenses)
+    
+    def get_expenses_by_category(self):
+        categories = {}
+        for exp in self.expenses:
+            categories[exp['category']] = categories.get(exp['category'], 0) + exp['amount']
+        return "\n".join([f"{cat}: ${amt}" for cat, amt in categories.items()])
+
+    def update_ui(self):
+        self.budget_label.config(text=f"Monthly Budget: ${self.budget}")
+        self.spent_label.config(text=f"Total Spent: ${self.get_total_spent()}")
+        self.remaining_label.config(text=f"Leftover: ${self.budget - self.get_total_spent()}")
+        self.category_display.config(text=self.get_expenses_by_category())
+    
+    def set_budget(self):
+        budget = simpledialog.askfloat("Set Budget", "Enter your monthly budget:")
+        if budget is not None:
+            self.budget = budget
+            self.update_ui()
+            messagebox.showinfo("Success", "Budget set successfully!")
+    
+    def add_expense(self):
+        category = simpledialog.askstring("Add Expense", "Enter category:")
+        description = simpledialog.askstring("Add Expense", "Enter description:")
+        amount = simpledialog.askfloat("Add Expense", "Enter amount:")
+        
+        if category and description and amount:
+            self.expenses.append({"amount": amount, "category": category, "description": description})
+            self.update_ui()
+            messagebox.showinfo("Success", "Expense added successfully!")
+        else:
+            messagebox.showerror("Error", "All fields are required!")
+    
+    def view_expenses(self):
+        expense_list = "\n".join([f"{i+1}. {exp['category']}: {exp['description']} - ${exp['amount']}" for i, exp in enumerate(self.expenses)])
+        messagebox.showinfo("Expenses", expense_list if expense_list else "No expenses recorded.")
+    
+    def delete_expense(self):
+        if not self.expenses:
+            messagebox.showinfo("Delete Expense", "No expenses to delete.")
+            return
+        
+        index = simpledialog.askinteger("Delete Expense", "Enter expense number to delete:", minvalue=1, maxvalue=len(self.expenses))
+        if index is not None:
+            del self.expenses[index - 1]
+            self.update_ui()
+            messagebox.showinfo("Success", "Expense deleted successfully!")
+    
+    def save_data(self):
+        data = {"budget": self.budget, "expenses": self.expenses}
+        with open("expenses.json", "w") as file:
+            json.dump(data, file)
+        messagebox.showinfo("Success", "Data saved successfully!")
+    
+    def load_data(self):
+        try:
+            with open("expenses.json", "r") as file:
+                data = json.load(file)
+                self.budget = data.get("budget", 0)
+                self.expenses = data.get("expenses", [])
+                self.update_ui()
+                messagebox.showinfo("Success", "Data loaded successfully!")
+        except (FileNotFoundError, json.JSONDecodeError):
+            messagebox.showerror("Error", "No saved data found.")
+
+if __name__ == "__main__":
+    root = tk.Tk()
+    app = ExpenseTracker(root)
+    root.mainloop()
